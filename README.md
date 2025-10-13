@@ -666,7 +666,8 @@ Menjalankan web dinamis di Vingilot:
 
 1. Install & pastikan PHP-FPM listen TCP :9000
 
-   ```apt-get update && apt-get install -y nginx php-fpm
+   ```
+   apt-get update && apt-get install -y nginx php-fpm
 POOL=$(ls /etc/php/*/fpm/pool.d/www.conf | head -n1)
 sed -i 's~^listen = .*~listen = 127.0.0.1:9000~' "$POOL"
 
