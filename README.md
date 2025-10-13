@@ -1,4 +1,4 @@
-# LAPRES Praktikum Kmunikasi Data dan Jaringan Komputer Modul 2 - K-23
+# LAPRES Praktikum Komunikasi Data dan Jaringan Komputer Modul 2 - K-23
 
 ## Anggota
 1. M. Faqih Ridho - 5027241123
@@ -207,9 +207,12 @@ dig @10.75.3.3 A   k23.com +noall +answer
 ```
 
 **Hasil Valmar**
+
 <img width="814" height="137" alt="nomer 4 valmar slave (2)" src="https://github.com/user-attachments/assets/2479a88f-2de0-4300-9e30-39e6e77182e7" />
 
+
 **Hasil Tirion**
+
 <img width="836" height="124" alt="nomer 4 tirion master (2)" src="https://github.com/user-attachments/assets/494a4ae9-64f1-4b00-845e-5dc31b18c4f1" />
 
 
@@ -666,8 +669,8 @@ Menjalankan web dinamis di Vingilot:
 
 1. Install & pastikan PHP-FPM listen TCP :9000
 
-   ```
-   apt-get update && apt-get install -y nginx php-fpm
+```
+apt-get update && apt-get install -y nginx php-fpm
 POOL=$(ls /etc/php/*/fpm/pool.d/www.conf | head -n1)
 sed -i 's~^listen = .*~listen = 127.0.0.1:9000~' "$POOL"
 
