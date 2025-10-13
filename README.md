@@ -372,6 +372,66 @@ Berikut beberapa bukti gambar hasilnya
 
 ### Nomor 6
 
+1) NS1 (Tirion) — naikkan serial & kirim NOTIFY
+
+Jalankan di Tirion (10.75.3.3)
+
+Opsi otomatis (tanpa buka editor):
+
+```
+DOMAIN=k23.com
+ZFILE=/etc/bind/zones/db.$DOMAIN
+S=$(dig @127.0.0.1 $DOMAIN SOA +short | awk '{print $3}')
+N=$((S+1))
+[ -n "$S" ] && [ -n "$N" ] && sed -i "0,/$S/s//$N/" "$ZFILE"
+named-checkzone $DOMAIN "$ZFILE"
+(rndc reload $DOMAIN || kill -HUP $(pidof named) || { pkill named; /usr/sbin/named -u bind -c /etc/bind/named.conf; })
+(rndc notify $DOMAIN 2>/dev/null || true)
+dig @127.0.0.1 $DOMAIN SOA +short
+```
+
+Kalau mau manual: buka nano /etc/bind/zones/db.k23.com, naikkan angka Serial (+1), simpan, lalu:
+
+```
+named-checkzone k23.com /etc/bind/zones/db.k23.com
+(rndc reload k23.com || kill -HUP $(pidof named) || { pkill named; /usr/sbin/named -u bind -c /etc/bind/named.conf; })
+(rndc notify k23.com 2>/dev/null || true)
+dig @10.75.3.3 k23.com SOA +short
+```
+<img width="803" height="378" alt="soal nomer 6 di tirion naikkan serial (4)" src="https://github.com/user-attachments/assets/2641ebc4-d819-4ed5-b098-b76c7f2704e2" />
+
+
+2) NS2 (Valmar) — tarik salinan terbaru
+
+Jalankan di Valmar (10.75.3.4)
+
+```
+DOMAIN=k23.com
+(rndc refresh $DOMAIN 2>/dev/null || rndc retransfer $DOMAIN 2>/dev/null || true)
+(rndc reload $DOMAIN 2>/dev/null || kill -HUP $(pidof named) || { pkill named; /usr/sbin/named -u bind -c /etc/bind/named.conf; })
+dig @127.0.0.1 $DOMAIN SOA +short
+ls -l /var/cache/bind/db.$DOMAIN 2>/dev/null || true
+```
+<img width="947" height="155" alt="soal nomer 6 di valmar naikkan serial (4)" src="https://github.com/user-attachments/assets/5753af58-de69-4199-8878-72f180d31ed3" />
+
+
+3) Verifikasi (boleh dari node mana saja)
+   
+```
+echo "NS1 serial:"; dig @10.75.3.3 k23.com SOA +short
+echo "NS2 serial:"; dig @10.75.3.4 k23.com SOA +short
+```
+
+
+Hasil kedua baris (kolom ke-3) harus sama.
+Contoh yang benar:
+
+ns1.k23.com. admin.k23.com. 2025101303 3600 900 1209600 300
+ns2.k23.com. admin.k23.com. 2025101303 3600 900 1209600 300
+
+Berikut output yang ditemukan 
+
+<img width="566" height="92" alt="soal 6 hasil (4)" src="https://github.com/user-attachments/assets/a952980d-b571-45cc-ba1f-9551e997ef4d" />
 
 
 
