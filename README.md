@@ -220,158 +220,129 @@ dig @10.75.3.3 A   k23.com +noall +answer
 
 Untuk membuat domain untuk setiap node yang pertama harus configure dari master yaitu Tirion. Berikut konfigurasinya 
 
-<img width="797" height="431" alt="soal nomer 5 konfigurasi tirion di db (3)" src="https://github.com/user-attachments/assets/2a9a7597-7dfe-40d0-a5ab-fa5c5ad5615f" />
+```
+# 1) Pastikan direktori zona ada
+mkdir -p /etc/bind/zones
 
-Setelah itu, kita membuat domainnya. untuk membuat domain setiap node perlu mengkonfigurasikan ke masing-masing node dengan tab terminal yang berbeda-beda.Berikut adalah konfigurasinya tetapi dijadikan satu, dalam pengerjaan menyesuaikan nama node.
+# 2) named.conf.local – master k23.com dan izinkan transfer ke ns2
+cat >/etc/bind/named.conf.local <<'EOF'
+zone "k23.com" {
+    type master;
+    file "/etc/bind/zones/db.k23.com";
+    allow-transfer { 10.75.3.4; };   // Valmar
+    also-notify   { 10.75.3.4; };
+    notify yes;
+};
+EOF
+
+# 3) named.conf.options (forwarder & listen any)
+cat >/etc/bind/named.conf.options <<'EOF'
+options {
+    directory "/var/cache/bind";
+    recursion yes;
+    allow-query { any; };
+    forwarders { 192.168.122.1; };
+    dnssec-validation no;
+    listen-on { any; };
+    listen-on-v6 { any; };
+};
+EOF
+
+# 4) File zona k23.com (lengkap)
+cat >/etc/bind/zones/db.k23.com <<'EOF'
+$TTL 300
+@   IN SOA ns1.k23.com. admin.k23.com. (
+        2025101901 ; Serial  (naikkan setiap edit)
+        3600       ; Refresh
+        900        ; Retry
+        1209600    ; Expire
+        300 )      ; Minimum
+
+; authoritative NS
+    IN  NS  ns1.k23.com.
+    IN  NS  ns2.k23.com.
+
+; alamat NS
+ns1 IN  A   10.75.3.3
+ns2 IN  A   10.75.3.4
+
+; apex (front door)
+@   IN  A   10.75.3.2
+www IN  CNAME @
+
+; host layanan
+sirion   IN  A   10.75.3.2
+lindon   IN  A   10.75.3.5
+vingilot IN  A   10.75.3.6
+static   IN  CNAME lindon.k23.com.
+app      IN  CNAME vingilot.k23.com.
+
+; barat (10.75.1.0/24)
+earendil IN  A   10.75.1.2
+elwing   IN  A   10.75.1.3
+
+; timur (10.75.2.0/24)
+cirdan   IN  A   10.75.2.2
+elrond   IN  A   10.75.2.3
+maglor   IN  A   10.75.2.4
+EOF
+
+# 5) Reload named (tanpa systemd)
+pkill named 2>/dev/null || true
+/usr/sbin/named -u bind -c /etc/bind/named.conf
 
 ```
-Earendil (West)
-H=earendil; IP=10.75.1.2; GW=10.75.1.1
-echo "$H" >/etc/hostname; hostname "$H"
-cat >/etc/resolv.conf <<'EOF'
-search k23.com
-nameserver 10.75.3.3
-nameserver 10.75.3.4
-nameserver 192.168.122.1
-EOF
-sed -i "/$H\.k23\.com/d" /etc/hosts; printf "%s %s.k23.com %s\n" "$IP" "$H" "$H" >>/etc/hosts
-ip addr flush dev eth0; ip addr add $IP/24 dev eth0; ip link set eth0 up; ip route replace default via $GW
-hostname -f; dig $H.k23.com +short || true; ping -c2 $H.k23.com
 
-Elwing (West)
-H=elwing; IP=10.75.1.3; GW=10.75.1.1
-echo "$H" >/etc/hostname; hostname "$H"
-cat >/etc/resolv.conf <<'EOF'
-search k23.com
-nameserver 10.75.3.3
-nameserver 10.75.3.4
-nameserver 192.168.122.1
-EOF
-sed -i "/$H\.k23\.com/d" /etc/hosts; printf "%s %s.k23.com %s\n" "$IP" "$H" "$H" >>/etc/hosts
-ip addr flush dev eth0; ip addr add $IP/24 dev eth0; ip link set eth0 up; ip route replace default via $GW
-hostname -f; dig $H.k23.com +short || true; ping -c2 $H.k23.com
+Setelah Tirion , konfigurasi untuk valmar
 
-Cirdan (East)
-H=cirdan; IP=10.75.2.2; GW=10.75.2.1
-echo "$H" >/etc/hostname; hostname "$H"
-cat >/etc/resolv.conf <<'EOF'
-search k23.com
-nameserver 10.75.3.3
-nameserver 10.75.3.4
-nameserver 192.168.122.1
-EOF
-sed -i "/$H\.k23\.com/d" /etc/hosts; printf "%s %s.k23.com %s\n" "$IP" "$H" "$H" >>/etc/hosts
-ip addr flush dev eth0; ip addr add $IP/24 dev eth0; ip link set eth0 up; ip route replace default via $GW
-hostname -f; dig $H.k23.com +short || true; ping -c2 $H.k23.com
-
-Elrond (East)
-H=elrond; IP=10.75.2.3; GW=10.75.2.1
-echo "$H" >/etc/hostname; hostname "$H"
-cat >/etc/resolv.conf <<'EOF'
-search k23.com
-nameserver 10.75.3.3
-nameserver 10.75.3.4
-nameserver 192.168.122.1
-EOF
-sed -i "/$H\.k23\.com/d" /etc/hosts; printf "%s %s.k23.com %s\n" "$IP" "$H" "$H" >>/etc/hosts
-ip addr flush dev eth0; ip addr add $IP/24 dev eth0; ip link set eth0 up; ip route replace default via $GW
-hostname -f; dig $H.k23.com +short || true; ping -c2 $H.k23.com
-
-Maglor (East)
-H=maglor; IP=10.75.2.4; GW=10.75.2.1
-echo "$H" >/etc/hostname; hostname "$H"
-cat >/etc/resolv.conf <<'EOF'
-search k23.com
-nameserver 10.75.3.3
-nameserver 10.75.3.4
-nameserver 192.168.122.1
-EOF
-sed -i "/$H\.k23\.com/d" /etc/hosts; printf "%s %s.k23.com %s\n" "$IP" "$H" "$H" >>/etc/hosts
-ip addr flush dev eth0; ip addr add $IP/24 dev eth0; ip link set eth0 up; ip route replace default via $GW
-hostname -f; dig $H.k23.com +short || true; ping -c2 $H.k23.com
-
-Sirion (DMZ)
-H=sirion; IP=10.75.3.2; GW=10.75.3.1
-echo "$H" >/etc/hostname; hostname "$H"
-cat >/etc/resolv.conf <<'EOF'
-search k23.com
-nameserver 10.75.3.3
-nameserver 10.75.3.4
-nameserver 192.168.122.1
-EOF
-sed -i "/$H\.k23\.com/d" /etc/hosts; printf "%s %s.k23.com %s\n" "$IP" "$H" "$H" >>/etc/hosts
-ip addr flush dev eth0; ip addr add $IP/24 dev eth0; ip link set eth0 up; ip route replace default via $GW
-hostname -f; dig $H.k23.com +short || true; ping -c2 $H.k23.com
-
-Tirion (ns1, DMZ)
-H=tirion; IP=10.75.3.3; GW=10.75.3.1
-echo "$H" >/etc/hostname; hostname "$H"
-cat >/etc/resolv.conf <<'EOF'
-search k23.com
-nameserver 10.75.3.3
-nameserver 10.75.3.4
-nameserver 192.168.122.1
-EOF
-sed -i "/$H\.k23\.com/d" /etc/hosts; printf "%s %s.k23.com %s\n" "$IP" "$H" "$H" >>/etc/hosts
-ip addr flush dev eth0; ip addr add $IP/24 dev eth0; ip link set eth0 up; ip route replace default via $GW
-hostname -f; dig ns1.k23.com +short || true; ping -c2 ns1.k23.com
-
-Valmar (ns2, DMZ)
-H=valmar; IP=10.75.3.4; GW=10.75.3.1
-echo "$H" >/etc/hostname; hostname "$H"
-cat >/etc/resolv.conf <<'EOF'
-search k23.com
-nameserver 10.75.3.3
-nameserver 10.75.3.4
-nameserver 192.168.122.1
-EOF
-sed -i "/$H\.k23\.com/d" /etc/hosts; printf "%s %s.k23.com %s\n" "$IP" "$H" "$H" >>/etc/hosts
-ip addr flush dev eth0; ip addr add $IP/24 dev eth0; ip link set eth0 up; ip route replace default via $GW
-hostname -f; dig ns2.k23.com +short || true; ping -c2 ns2.k23.com
-
-Lindon (DMZ)
-H=lindon; IP=10.75.3.5; GW=10.75.3.1
-echo "$H" >/etc/hostname; hostname "$H"
-cat >/etc/resolv.conf <<'EOF'
-search k23.com
-nameserver 10.75.3.3
-nameserver 10.75.3.4
-nameserver 192.168.122.1
-EOF
-sed -i "/$H\.k23\.com/d" /etc/hosts; printf "%s %s.k23.com %s\n" "$IP" "$H" "$H" >>/etc/hosts
-ip addr flush dev eth0; ip addr add $IP/24 dev eth0; ip link set eth0 up; ip route replace default via $GW
-hostname -f; dig $H.k23.com +short || true; ping -c2 $H.k23.com
-
-Vingilot (DMZ)
-H=vingilot; IP=10.75.3.6; GW=10.75.3.1
-echo "$H" >/etc/hostname; hostname "$H"
-cat >/etc/resolv.conf <<'EOF'
-search k23.com
-nameserver 10.75.3.3
-nameserver 10.75.3.4
-nameserver 192.168.122.1
-EOF
-sed -i "/$H\.k23\.com/d" /etc/hosts; printf "%s %s.k23.com %s\n" "$IP" "$H" "$H" >>/etc/hosts
-ip addr flush dev eth0; ip addr add $IP/24 dev eth0; ip link set eth0 up; ip route replace default via $GW
-hostname -f; dig $H.k23.com +short || true; ping -c2 $H.k23.com
-
-Eonwe (router) — hanya hostname & resolver (IP router sudah kamu set)
-H=eonwe
-echo "$H" >/etc/hostname; hostname "$H"
-cat >/etc/resolv.conf <<'EOF'
-search k23.com
-nameserver 10.75.3.3
-nameserver 10.75.3.4
-nameserver 192.168.122.1
-EOF
-sed -i "/$H\.k23\.com/d" /etc/hosts; printf "10.75.1.1 %s.k23.com %s\n" "$H" "$H" >>/etc/hosts
-hostname -f; dig $H.k23.com +short || true; ping -c2 $H.k23.com || true
 ```
-Berikut beberapa bukti gambar hasilnya
+# 1) named.conf.local – tarik zona dari ns1
+cat >/etc/bind/named.conf.local <<'EOF'
+zone "k23.com" {
+    type slave;
+    masters { 10.75.3.3; };           // Tirion
+    file "/var/cache/bind/db.k23.com";
+};
+EOF
 
-<img width="817" height="305" alt="nomer 5 lindon (3)" src="https://github.com/user-attachments/assets/e0c8c0ad-a61a-474f-947b-8473261fbca3" />
+# 2) named.conf.options (resolver sama dengan ns1)
+cat >/etc/bind/named.conf.options <<'EOF'
+options {
+    directory "/var/cache/bind";
+    recursion yes;
+    allow-query { any; };
+    forwarders { 192.168.122.1; };
+    dnssec-validation no;
+    listen-on { any; };
+    listen-on-v6 { any; };
+};
+EOF
 
-<img width="832" height="304" alt="Soal 5 Cirdan" src="https://github.com/user-attachments/assets/fad5bfef-ee32-4de1-9adb-8b7f9c8d6679" />
+# 3) Start/reload
+pkill named 2>/dev/null || true
+/usr/sbin/named -u bind -c /etc/bind/named.conf
+
+# 4) (opsional) pancing refresh/retransfer
+rndc refresh k23.com 2>/dev/null || true
+rndc retransfer k23.com 2>/dev/null || true
+
+```
+
+Setelah itu, kita membuat domainnya. untuk membuat domain setiap node perlu mengkonfigurasikan ke masing-masing node dengan tab terminal yang berbeda-beda.Berikut adalah konfigurasinya , dalam pengerjaan menyesuaikan nama node.
+
+```
+cat >/etc/resolv.conf <<'EOF'
+search k23.com
+nameserver 10.75.3.3
+nameserver 10.75.3.4
+nameserver 192.168.122.1
+EOF
+
+```
+Berikut salah satu bukti 
+
+<img width="569" height="301" alt="image" src="https://github.com/user-attachments/assets/40cf5faa-882d-478a-8f01-a0b2aa6e439e" />
+
 
 ### Nomor 6
 
