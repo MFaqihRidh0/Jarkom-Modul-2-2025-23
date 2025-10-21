@@ -413,78 +413,74 @@ dig @10.75.3.4 www.k23.com A +noall +answer +authority +comments
 
 ### Nomor 8
 
-**Tujuan**
+1) TIRION (ns1/master)
+Tambahkan zona reverse di named.conf.local:
 
-Mendeklarasikan reverse zone untuk segmen DMZ 10.75.3.0/24 di NS1 dan menariknya sebagai slave di NS2. Isi PTR:
-
-10.75.3.2 → sirion.k23.com.
-
-10.75.3.5 → lindon.k23.com.
-
-10.75.3.6 → vingilot.k23.com.
-
-**Pengerjaan**
-
-NS1 / Tirion (master)
-
-1. named.conf.local (cuplikan):
-   ```
-   zone "3.75.10.in-addr.arpa" {
+```
+cat >> /etc/bind/named.conf.local <<'EOF'
+zone "3.75.10.in-addr.arpa" {
     type master;
     file "/etc/bind/zones/db.10.75.3.rev";
-    allow-transfer { 10.75.3.4; };
+    allow-transfer { 10.75.3.4; };   // Valmar
+    also-notify   { 10.75.3.4; };
     notify yes;
 };
-```
+EOF
+Buat file zona reverse:
+mkdir -p /etc/bind/zones
 
-2. File reverse:
-
-```
+cat > /etc/bind/zones/db.10.75.3.rev <<'EOF'
 $TTL 300
-@   IN SOA ns1.k23.com. admin.k23.com. (
-        2025101301 3600 900 1209600 300 )
-    IN NS  ns1.k23.com.
-    IN NS  ns2.k23.com.
+@   IN  SOA ns1.k23.com. admin.k23.com. (
+        2025101901  ; Serial (naikkan setiap edit)
+        3600        ; Refresh
+        900         ; Retry
+        1209600     ; Expire
+        300 )       ; Minimum
+    IN  NS  ns1.k23.com.
+    IN  NS  ns2.k23.com.
 
-2   IN PTR sirion.k23.com.
-5   IN PTR lindon.k23.com.
-6   IN PTR vingilot.k23.com.
+; PTR di segmen 10.75.3.0/24
+2   IN  PTR sirion.k23.com.
+5   IN  PTR lindon.k23.com.
+6   IN  PTR vingilot.k23.com.
+EOF
 ```
 
-3. Validasi & reload:
+Reload named (tanpa systemd):
 
 ```
 named-checkzone 3.75.10.in-addr.arpa /etc/bind/zones/db.10.75.3.rev
-rndc reload 3.75.10.in-addr.arpa
-rndc notify 3.75.10.in-addr.arpa
+rndc reload 3.75.10.in-addr.arpa 2>/dev/null || { pkill named; /usr/sbin/named -u bind -c /etc/bind/named.conf; }
 ```
-<img width="362" height="305" alt="Soal 8 konfigurasi tirion (6)" src="https://github.com/user-attachments/assets/aa884a1a-8bd5-42de-a701-effedba57dbe" />
-
-
-**NS2 / Valmar (slave)**
-
+________________________________________
+2) VALMAR (ns2/slave)
+Deklarasikan slave zone di named.conf.local:
 ```
+cat >> /etc/bind/named.conf.local <<'EOF'
 zone "3.75.10.in-addr.arpa" {
     type slave;
-    file "/var/cache/bind/db.10.75.3.rev";
-    masters { 10.75.3.3; };
+    masters { 10.75.3.3; };                  // Tirion
+    file "/var/cache/bind/db.10.75.3.rev";   // akan di-pull otomatis
 };
+EOF
+Refresh/transfer zona dari ns1:
+rndc refresh 3.75.10.in-addr.arpa 2>/dev/null || true
+rndc retransfer 3.75.10.in-addr.arpa 2>/dev/null || true
+ls -l /var/cache/bind/db.10.75.3.rev   # harus muncul file hasil transfer
 ```
 
-**Verifikasi**
+### Verifikasi
 
-```# dari klien
-dig static.k23.com A +short       # 10.75.3.5
-curl -I http://static.k23.com/ | head -n1          # 200 OK
-curl -s  http://static.k23.com/annals/ | sed -n '1,5p'  # tampil listing
-
-# akses via IP harus 403
-curl -I http://10.75.3.5/ | head -n1               # 403 Forbidden
+```
+dig -x 10.75.3.6
+dig -x 10.75.3.2
+dig -x 10.75.3.5
 ```
 
-<img width="605" height="325" alt="Soal 8 konfigurasi velmar (6)" src="https://github.com/user-attachments/assets/dddff811-1fe8-4319-976b-b6a24129816f" />
+<img width="536" height="442" alt="image" src="https://github.com/user-attachments/assets/78f4c267-7075-4c55-b076-8bc75290eaed" />
 
-<img width="351" height="191" alt="Soal 8 hasil" src="https://github.com/user-attachments/assets/cbc1051c-ab4f-44a2-b86d-a1e6ddfb81ec" />
+<img width="539" height="227" alt="image" src="https://github.com/user-attachments/assets/988f0703-83aa-4d89-9402-27b4b054dadc" />
 
 
 ### Nomor 9
