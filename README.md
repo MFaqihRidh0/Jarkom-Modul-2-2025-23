@@ -498,28 +498,60 @@ Menjalankan web statis di Lindon dengan:
 **Pengerjaan (Lindon – 10.75.3.5)**
 
 ```
-apt-get update && apt-get install -y nginx
+# 1) Instal & siapkan konten
+apt-get update -y
+apt-get install -y nginx-light
 
-mkdir -p /var/www/static/public/annals
-echo "buldak.txt" > /var/www/static/public/annals/buldak.txt
+mkdir -p /var/www/static/annals
+cat > /var/www/static/index.html <<'EOF'
+<!doctype html><title>Annals Archive</title>
+<h1>📜 Annals Archive</h1>
+<p>Static site is up.</p>
+EOF
 
-cat >/etc/nginx/sites-available/static.k23.com <<'EOF'
+# contoh file di annals
+printf "File 1\n" > /var/www/static/annals/bullet.txt
+
+# 2) Vhost: static.k23.com + autoindex; blok akses via IP
+cat > /etc/nginx/sites-available/static.k23.com <<'EOF'
+# blok default untuk akses via IP -> 403
+server {
+    listen 80 default_server;
+    server_name _;
+    return 403;
+}
+
+# vhost utama: hanya untuk static.k23.com
 server {
     listen 80;
     server_name static.k23.com;
-    root /var/www/static/public;
+
+    root /var/www/static;
     index index.html;
 
+    # kalau ada yang akses pakai host selain static.k23.com -> 403
+    if ($host != "static.k23.com") { return 403; }
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # folder /annals/ autoindex (directory listing)
     location /annals/ {
         autoindex on;
     }
 }
-# akses via IP ditolak
-server { listen 80 default_server; return 403; }
 EOF
 
-ln -sf /etc/nginx/sites-available/static.k23.com /etc/nginx/sites-enabled/static.k23.com
-nginx -t && (pkill nginx 2>/dev/null || true) && nginx
+# 3) Aktifkan vhost & matikan default
+rm -f /etc/nginx/sites-enabled/default
+ln -sf /etc/nginx/sites-available/static.k23.com /etc/nginx/sites-enabled/
+
+# 4) Start/Reload Nginx (tanpa systemd)
+nginx -t || exit 1
+pkill nginx 2>/dev/null || true
+nginx
+
 ```
 
 <img width="946" height="223" alt="soal 9 konfigurasi lindon bagian kedua" src="https://github.com/user-attachments/assets/7a575309-597f-494c-ab25-ee072755acfb" />
@@ -528,16 +560,18 @@ nginx -t && (pkill nginx 2>/dev/null || true) && nginx
 
 ```
 # dari klien
-dig static.k23.com A +short       # 10.75.3.5
-curl -I http://static.k23.com/ | head -n1          # 200 OK
-curl -s  http://static.k23.com/annals/ | sed -n '1,5p'  # tampil listing
+curl -I http://static.k23.com/ | head -n1
+# -> HTTP/1.1 200 OK
 
-# akses via IP harus 403
-curl -I http://10.75.3.5/ | head -n1               # 403 Forbidden
+curl -s http://static.k23.com/annals/ | sed -n '1,5p'
+# harus terlihat listing (ada bullet.txt, dst)
+
+# akses via IP harusnya di tolak
+curl -I http://10.75.3.5/ | head -n1
+# -> HTTP/1.1 403 Forbidden              
 ```
 
-<img width="452" height="326" alt="Soal 9 hasil" src="https://github.com/user-attachments/assets/b62ccd69-6413-4c44-a0a9-0cebd32e3e1d" />
-
+<img width="734" height="320" alt="image" src="https://github.com/user-attachments/assets/bea452cb-1aad-487c-8f75-e1a3a953444a" />
 
 ### Nomor 10
 
