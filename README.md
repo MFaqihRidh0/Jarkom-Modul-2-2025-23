@@ -320,10 +320,9 @@ echo "NS2 serial:"; dig @10.75.3.4 k23.com SOA +short
 
 Hasil kedua baris (kolom ke-3) harus sama.
 Contoh yang benar:
-
-ns1.k23.com. admin.k23.com. 2025101303 3600 900 1209600 300
-ns2.k23.com. admin.k23.com. 2025101303 3600 900 1209600 300
-
+```
+dig @10.75.3.3 k23.com SOA
+```
 Berikut output yang ditemukan 
 
 <img width="898" height="363" alt="image" src="https://github.com/user-attachments/assets/47049f55-7e5f-48ad-9c9d-5f160b6e530d" />
