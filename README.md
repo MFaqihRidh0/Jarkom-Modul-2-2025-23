@@ -293,7 +293,7 @@ named-checkzone k23.com /etc/bind/zones/db.k23.com
 (rndc notify k23.com 2>/dev/null || true)
 dig @10.75.3.3 k23.com SOA +short
 ```
-<img width="803" height="378" alt="soal nomer 6 di tirion naikkan serial (4)" src="https://github.com/user-attachments/assets/2641ebc4-d819-4ed5-b098-b76c7f2704e2" />
+<img width="907" height="242" alt="image" src="https://github.com/user-attachments/assets/f291e0a2-76cd-45c4-a451-725b3610dab7" />
 
 
 2) NS2 (Valmar) — tarik salinan terbaru
@@ -326,7 +326,8 @@ ns2.k23.com. admin.k23.com. 2025101303 3600 900 1209600 300
 
 Berikut output yang ditemukan 
 
-<img width="566" height="92" alt="soal 6 hasil (4)" src="https://github.com/user-attachments/assets/a952980d-b571-45cc-ba1f-9551e997ef4d" />
+<img width="898" height="363" alt="image" src="https://github.com/user-attachments/assets/47049f55-7e5f-48ad-9c9d-5f160b6e530d" />
+
 
 ### Nomor 7
 
